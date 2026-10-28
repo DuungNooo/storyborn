@@ -199,7 +199,7 @@ namespace Storyborn
                 velocity.x=input*moveSpeed;
                 if(jumpBuffer>0 && coyote>0) { velocity.y=jumpSpeed;grounded=false;coyote=0;jumpBuffer=0; }
                 velocity.y-=gravity*dt;
-                if(Controls.MouseDown(0) && chain.TryStart(clock))
+                if(Controls.MouseDown(1) && chain.TryStart(clock))
                 {
                     float up=(Controls.Held(KeyCode.W)||Controls.Held(KeyCode.UpArrow)?1:0)-(Controls.Held(KeyCode.S)||Controls.Held(KeyCode.DownArrow)?1:0);
                     dashDirection=new Vector2(input,up);
@@ -223,7 +223,7 @@ namespace Storyborn
             }
             if(pos.y<Floor+.65f) { pos.y=Floor+.65f;velocity.y=0;grounded=true; }
             pos.x=Mathf.Clamp(pos.x,Left+.4f,Right-.4f); pos.y=Mathf.Min(pos.y,5);
-            if(clock>=nextAttack && Controls.MouseDown(1))
+            if(clock>=nextAttack && Controls.MouseDown(0))
             {
                 nextAttack=clock+attackCooldown; slashUntil=clock+.12f;
                 for(int i=foes.Count-1;i>=0;i--)
@@ -391,7 +391,7 @@ namespace Storyborn
             Label(450,49,420,25,"ATK "+damage+"   /   ENEMIES "+foes.Count+"   /   SEED "+seed,smallStyle);
             Label(1000,20,260,50,"ESC  Pause\nAttempt "+(deaths+1),smallStyle);
             Fill(new Rect(0,672,1280,48),new Color(.035f,.05f,.08f,.94f));
-            Label(28,682,1200,30,"WASD  Move / Jump / Drop    RMB  Attack    LMB  Dash    Q  Pulse    E  Ink bolt    |    Walk into cleared gate",smallStyle);
+            Label(28,682,1200,30,"WASD  Move / Jump / Drop    LMB  Attack    RMB  Dash    Q  Pulse    E  Ink bolt    |    Walk into cleared gate",smallStyle);
             Label(28,625,900,30,"Q PULSE  "+(qSkill.Remaining(clock)>0?qSkill.Remaining(clock).ToString("0.0")+"s":"READY")+"     E INK BOLT  "+(eSkill.Remaining(clock)>0?eSkill.Remaining(clock).ToString("0.0")+"s":"READY"),smallStyle);
             if(clock<bannerUntil) Label(250,112,850,60,banner);
             if(foes.Count==0 && mode==Mode.Playing) Label(450,580,600,50,"ROOM CLEAR  /  Walk into the gate");
