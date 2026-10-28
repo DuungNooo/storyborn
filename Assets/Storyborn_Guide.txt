@@ -1,8 +1,18 @@
 # STORYBORN v0.2 — 기존 Unity 프로젝트에 넣는 버전
 
-## 가져와서 실행하기
+## 가져오기 창에서 NullReferenceException이 발생한 경우
 
-1. GitHub의 `Downloads/Storyborn_v0.2.unitypackage`를 다운로드합니다.
+`PackageImportTreeView.RecursiveComputeEnabledStateForFolders`는 Unity 패키지 가져오기 창의 폴더 처리에서 난 오류입니다. 이전 수동 생성 패키지의 폴더 레코드를 보완한 v0.2.1을 제공하지만 실제 에디터에서 재검증하지 못했습니다. 아래 ZIP 직접 복사 방식은 그 가져오기 창을 사용하지 않습니다.
+
+1. Import 창을 Cancel/닫기로 닫고 Play를 중지합니다. Unity를 종료합니다.
+2. `Storyborn_v0.2.1_Assets.zip`을 일반 폴더에 압축 해제합니다.
+3. 압축을 푼 폴더 **안의 Assets 내용**을 기존 프로젝트의 **Assets 안에** 복사합니다. Scripts, Scenes, Editor와 안내 파일이 해당 폴더로 합쳐지게 합니다. `Assets/Assets`로 중첩하지 않습니다. 기존 Storyborn 파일은 덮어씁니다.
+4. Unity를 다시 열고 가져오기·컴파일이 끝날 때까지 기다립니다.
+5. `Storyborn → Play Prototype`을 누르고 Game 뷰를 클릭합니다.
+
+## unitypackage로 가져오기
+
+1. GitHub의 `Downloads/Storyborn_v0.2.1.unitypackage`를 다운로드합니다.
 2. 사용 중인 Unity 프로젝트를 연 상태에서 파일을 Project 창에 드래그합니다. 또는 `Assets → Import Package → Custom Package…`에서 파일을 선택합니다.
 3. Import 창에서 모두 선택하고 **Import**합니다. 이전 Storyborn v0.1을 사용 중이면 같은 GUID의 코드와 씬이 업데이트됩니다.
 4. 컴파일이 끝나면 상단 **Storyborn → Play Prototype**을 누릅니다.
@@ -10,7 +20,7 @@
 
 새 Unity 프로젝트를 만들거나 ProjectSettings/Packages를 덮어쓸 필요가 없습니다. 샘플 씬과 런타임 코드, 에디터 실행 메뉴만 가져옵니다. 기존 작업 씬에 자동으로 게임을 생성하지 않습니다. 실행 메뉴는 현재 씬을 저장할 기회를 제공한 뒤 샘플 씬을 엽니다.
 
-압축 파일 방식이 필요하면 `Storyborn_v0.2_Assets.zip`을 풀고 그 안의 `Assets` 내용을 기존 프로젝트의 `Assets`로 복사한 뒤 같은 메뉴로 실행할 수 있습니다. 같은 이름의 Storyborn 파일은 업데이트됩니다.
+압축 파일 방식이 필요하면 `Storyborn_v0.2.1_Assets.zip`을 풀고 그 안의 `Assets` 내용을 기존 프로젝트의 `Assets`로 복사한 뒤 같은 메뉴로 실행할 수 있습니다. 같은 이름의 Storyborn 파일은 업데이트됩니다.
 
 기준 에디터: **Unity 2022.3 LTS**. 기존 Input Manager와 새 Input System 설정을 모두 지원하도록 입력 어댑터를 넣었습니다. Unity 에디터에서 실제 가져오기와 플레이 검증은 아직 하지 못했습니다.
 
