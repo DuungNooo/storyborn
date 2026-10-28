@@ -1,0 +1,15 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 26
+  companyName: StorybornPrototype
+  productName: Storyborn
+  defaultScreenWidth: 1280
+  defaultScreenHeight: 720
+  runInBackground: 1
+  resizableWindow: 1
+  fullscreenMode: 3
+  activeInputHandler: 0
+  colorSpace: 0
