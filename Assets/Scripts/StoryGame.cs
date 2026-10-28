@@ -6,7 +6,7 @@ namespace Storyborn
 {
     public sealed class StoryGame : MonoBehaviour
     {
-        enum Mode { Title, Playing, Reward, Paused, Dead, Won }
+        enum Mode { Playing, Paused, Dead, Won }
         enum EnemyPhase { Approach, Tell, Strike, Recover }
         sealed class Foe
         {
@@ -22,6 +22,7 @@ namespace Storyborn
         {
             public Vector2 p, velocity;
             public float life = 4;
+            public bool friendly;
             public SpriteRenderer view;
         }
         sealed class Spark
@@ -53,26 +54,19 @@ namespace Storyborn
         readonly DashChain chain = new DashChain();
         Camera cam;
         Sprite pixel;
-        SpriteRenderer hero, blade, gate;
+        SpriteRenderer hero, blade, gate, pulse;
         Vector2 pos, velocity, dashDirection;
         int facing = 1, hp, maxHp, damage, room, seed, deaths;
         float clock, dashEnd, nextAttack, hurtUntil, slashUntil, coyote, jumpBuffer;
-        float shake, bannerUntil;
-        bool grounded, rewardTaken, wasDashing;
-        int[] offers = new int[3];
+        float shake, bannerUntil, pulseUntil;
+        readonly SkillCooldown qSkill = new SkillCooldown(4);
+        readonly SkillCooldown eSkill = new SkillCooldown(2);
+        bool grounded, wasDashing;
         System.Random rng;
         Font uiFont;
         GUIStyle titleStyle, labelStyle, smallStyle, buttonStyle;
         string banner = "";
         readonly string[] roomNames = { "01 / THE UNWRITTEN GATE", "02 / FRACTURED ARCHIVE", "03 / THE LAST WITNESS" };
-        readonly string[] rewardNames = { "SHARPENED WORD", "LASTING MEMORY", "LIGHT FOOTSTEPS", "LONG SENTENCE", "SECOND BREATH" };
-        readonly string[] rewardText = { "Attack damage +1", "Max health +2; recover 2", "Movement speed +12%", "Attack reach +20%", "Recover all health" };
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        static void Boot()
-        {
-            if (FindObjectOfType<StoryGame>() == null) new GameObject("Storyborn — Runtime").AddComponent<StoryGame>();
-        }
         void Awake()
         {
             Application.targetFrameRate = 120;
@@ -88,7 +82,8 @@ namespace Storyborn
             uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             hero = Box("Protagonist (placeholder)", Vector2.zero, new Vector2(.7f, 1.3f), Hex("83F4DB"), 6);
             blade = Box("Attack arc", Vector2.zero, Vector2.one, Hex("FFF0B1"), 7);
-            NewRun(); mode = Mode.Title;
+            pulse = Box("Q skill pulse",Vector2.zero,Vector2.one,Hex("83F4DB"),5);
+            NewRun();
         }
         SpriteRenderer Box(string name, Vector2 p, Vector2 size, Color color, int order)
         {
@@ -108,7 +103,7 @@ namespace Storyborn
         void NewRun()
         {
             seed = unchecked((int)DateTime.UtcNow.Ticks); rng = new System.Random(seed);
-            maxHp = hp = 8; damage = 1; room = 0; moveSpeed = 7.5f; attackReach = 2.1f;
+            maxHp = hp = 8; damage = 1; room = 0;
             clock = 0; dashEnd = nextAttack = hurtUntil = slashUntil = 0;
             chain.Limit = dashChainLimit; chain.Window = dashChainWindow; chain.LockDuration = dashLockDuration;
             ResetChain();
@@ -127,7 +122,7 @@ namespace Storyborn
             if (gate != null) Destroy(gate.gameObject);
             pos = new Vector2(0, Floor+.65f); velocity = Vector2.zero; facing = 1;
             grounded = true; wasDashing = false; coyote = .1f; jumpBuffer = 0; dashEnd = slashUntil = hurtUntil = nextAttack = clock;
-            ResetChain(); rewardTaken = false;
+            ResetChain(); qSkill.Reset(); eSkill.Reset(); pulseUntil = clock;
             Decor(new Vector2(16, Floor-.4f), new Vector2(40,.8f), Hex("333D50"), 1);
             Decor(new Vector2(16, Floor+.02f), new Vector2(40,.06f), Hex("7F979F"), 2);
             for (int i = 0; i < 24; i++)
@@ -142,7 +137,7 @@ namespace Storyborn
             // Platforms are one-way surfaces: jump through, land from above.
             Decor(new Vector2(7,-1.25f), new Vector2(3,.18f), Hex("44526A"), 2);
             Decor(new Vector2(22,-.5f), new Vector2(3,.18f), Hex("44526A"), 2);
-            gate = Box("Exit — E when clear", new Vector2(33, Floor+1.5f), new Vector2(.4f,3), Hex("79536B"), 3);
+            gate = Box("Exit — walk through when clear", new Vector2(33, Floor+1.5f), new Vector2(.4f,3), Hex("79536B"), 3);
             if (room == 0) { Spawn(11,0); Spawn(23,0); }
             if (room == 1) { Spawn(10,1); Spawn(19,0); Spawn(27,1); }
             if (room == 2) Spawn(24,2);
@@ -162,16 +157,10 @@ namespace Storyborn
         Color EnemyColor(Foe f) { return Hex(f.type==2 ? "C293E5" : f.type==1 ? "E9B76A" : "D78689"); }
         void Update()
         {
-            if (mode == Mode.Title) { if (Input.GetKeyDown(KeyCode.Return)) mode=Mode.Playing; SyncVisuals(); return; }
             if (mode == Mode.Dead || mode == Mode.Won)
-            { if (Input.GetKeyDown(KeyCode.R)) NewRun(); SyncVisuals(); return; }
-            if (Input.GetKeyDown(KeyCode.Escape))
+            { if (Controls.Down(KeyCode.R)) NewRun(); SyncVisuals(); return; }
+            if (Controls.Down(KeyCode.Escape))
             { if (mode==Mode.Playing) mode=Mode.Paused; else if(mode==Mode.Paused) mode=Mode.Playing; }
-            if (mode == Mode.Reward)
-            {
-                for (int i=0;i<3;i++) if(Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1+i))) TakeReward(i);
-                SyncVisuals(); return;
-            }
             if (mode != Mode.Playing) { SyncVisuals(); return; }
             float dt = Mathf.Min(Time.deltaTime,.033f); clock += dt;
             PlayerStep(dt);
@@ -192,16 +181,16 @@ namespace Storyborn
             if(foes.Count==0)
             {
                 gate.color=Hex("83F4DB");
-                if (!rewardTaken && room<2) { RollRewards(); mode=Mode.Reward; }
-                else if (Mathf.Abs(pos.x-33)<1.8f && Input.GetKeyDown(KeyCode.E))
+                ClearShots();
+                if (Mathf.Abs(pos.x-33)<1.1f)
                 { if(room==2) mode=Mode.Won; else { room++; BuildRoom(); } }
             }
             SyncVisuals();
         }
         void PlayerStep(float dt)
         {
-            float input=(Input.GetKey(KeyCode.D)||Input.GetKey(KeyCode.RightArrow)?1:0)-(Input.GetKey(KeyCode.A)||Input.GetKey(KeyCode.LeftArrow)?1:0);
-            if(Input.GetKeyDown(KeyCode.Space)) jumpBuffer=.12f; else jumpBuffer-=dt;
+            float input=(Controls.Held(KeyCode.D)||Controls.Held(KeyCode.RightArrow)?1:0)-(Controls.Held(KeyCode.A)||Controls.Held(KeyCode.LeftArrow)?1:0);
+            if((Controls.Down(KeyCode.W)||Controls.Down(KeyCode.Space))) jumpBuffer=.12f; else jumpBuffer-=dt;
             if(grounded) coyote=.1f; else coyote-=dt;
             if(wasDashing && clock>=dashEnd) { velocity.y=0; wasDashing=false; }
             if(clock>=dashEnd)
@@ -210,15 +199,17 @@ namespace Storyborn
                 velocity.x=input*moveSpeed;
                 if(jumpBuffer>0 && coyote>0) { velocity.y=jumpSpeed;grounded=false;coyote=0;jumpBuffer=0; }
                 velocity.y-=gravity*dt;
-                if((Input.GetKeyDown(KeyCode.LeftShift)||Input.GetKeyDown(KeyCode.K)) && chain.TryStart(clock))
+                if(Controls.MouseDown(0) && chain.TryStart(clock))
                 {
-                    float up=(Input.GetKey(KeyCode.W)||Input.GetKey(KeyCode.UpArrow)?1:0)-(Input.GetKey(KeyCode.S)||Input.GetKey(KeyCode.DownArrow)?1:0);
+                    float up=(Controls.Held(KeyCode.W)||Controls.Held(KeyCode.UpArrow)?1:0)-(Controls.Held(KeyCode.S)||Controls.Held(KeyCode.DownArrow)?1:0);
                     dashDirection=new Vector2(input,up);
                     if(dashDirection.sqrMagnitude<.01f) dashDirection=new Vector2(facing,0);
                     dashDirection.Normalize(); dashEnd=clock+dashDuration;
                     Burst(pos,Hex("83F4DB"),5);
                 }
             }
+            if(Controls.Down(KeyCode.S) && grounded && pos.y-.65f>Floor+.1f)
+            { pos.y-=.25f; velocity.y=-2; grounded=false; coyote=0; }
             wasDashing=clock<dashEnd;
             float oldBottom=pos.y-.65f;
             if(clock<dashEnd) { velocity=dashDirection*dashSpeed; }
@@ -232,17 +223,31 @@ namespace Storyborn
             }
             if(pos.y<Floor+.65f) { pos.y=Floor+.65f;velocity.y=0;grounded=true; }
             pos.x=Mathf.Clamp(pos.x,Left+.4f,Right-.4f); pos.y=Mathf.Min(pos.y,5);
-            if(clock>=nextAttack && (Input.GetKeyDown(KeyCode.J)||Input.GetMouseButtonDown(0)))
+            if(clock>=nextAttack && Controls.MouseDown(1))
             {
                 nextAttack=clock+attackCooldown; slashUntil=clock+.12f;
                 for(int i=foes.Count-1;i>=0;i--)
                 {
                     var f=foes[i];
                     if(!CombatRules.InAttack(pos.x,pos.y,facing,f.p.x,f.p.y,attackReach+f.Width*.5f)) continue;
-                    f.hp-=damage; f.flash=.12f; Burst(f.p,Hex("FFF0B1"),7); shake=.2f;
-                    if(f.hp<=0) { Destroy(f.body.gameObject);Destroy(f.mark.gameObject);foes.RemoveAt(i); }
+                    HitFoe(i,damage);
                 }
             }
+            if(Controls.Down(KeyCode.Q) && qSkill.TryUse(clock))
+            {
+                pulseUntil=clock+.18f; pulse.transform.position=pos;
+                Burst(pos,Hex("83F4DB"),18);
+                for(int i=foes.Count-1;i>=0;i--)
+                    if((foes[i].p-pos).sqrMagnitude<=16) HitFoe(i,3);
+            }
+            if(Controls.Down(KeyCode.E) && eSkill.TryUse(clock))
+                Fire(pos+new Vector2(facing*.6f,0),new Vector2(facing*15,0),true);
+        }
+        void HitFoe(int index,int hitDamage)
+        {
+            var f=foes[index];f.hp-=hitDamage;f.flash=.12f;
+            Burst(f.p,Hex("FFF0B1"),7);shake=.2f;
+            if(f.hp<=0) { Destroy(f.body.gameObject);Destroy(f.mark.gameObject);foes.RemoveAt(index); }
         }
         void Land(float oldBottom,float surface,float min,float max)
         {
@@ -291,17 +296,27 @@ namespace Storyborn
                 if(mode!=Mode.Playing) break;
             }
         }
-        void Fire(Vector2 p,Vector2 v)
+        void Fire(Vector2 p,Vector2 v,bool friendly=false)
         {
-            shots.Add(new Shot { p=p, velocity=v, view=Box("Echo projectile",p,new Vector2(.3f,.3f),Hex("F4B77F"),5) });
+            shots.Add(new Shot { p=p, velocity=v, friendly=friendly, view=Box(friendly?"E ink bolt":"Echo projectile",p,new Vector2(.3f,.3f),Hex(friendly?"83F4DB":"F4B77F"),5) });
         }
         void ShotStep(float dt)
         {
             for(int i=shots.Count-1;i>=0;i--)
             {
                 var s=shots[i];s.p+=s.velocity*dt;s.life-=dt;s.view.transform.position=s.p;
-                bool hit=CombatRules.Overlap(pos.x,pos.y,.7f,1.3f,s.p.x,s.p.y,.3f,.3f);
-                if(hit) Hurt(1,"An echo reached you. Watch its line, then dodge or use a platform.");
+                bool hit=false;
+                if(s.friendly)
+                {
+                    for(int j=foes.Count-1;j>=0;j--)
+                        if(CombatRules.Overlap(foes[j].p.x,foes[j].p.y,foes[j].Width,foes[j].type==2?2.2f:1.4f,s.p.x,s.p.y,.3f,.3f))
+                        { HitFoe(j,2);hit=true;break; }
+                }
+                else
+                {
+                    hit=CombatRules.Overlap(pos.x,pos.y,.7f,1.3f,s.p.x,s.p.y,.3f,.3f);
+                    if(hit) Hurt(1,"An echo reached you. Watch its line, then dodge or use a platform.");
+                }
                 if(hit || s.life<=0 || s.p.y<Floor || s.p.x<Left-2 || s.p.x>Right+2)
                 { Destroy(s.view.gameObject);shots.RemoveAt(i); }
             }
@@ -325,24 +340,11 @@ namespace Storyborn
                 sparks.Add(new Spark {p=p,v=v,life=.5f,view=Box("Ink fragment",p,new Vector2(.09f,.09f),color,8)});
             }
         }
-        void RollRewards()
-        {
-            var bag=new List<int>{0,1,2,3,4};
-            for(int i=0;i<3;i++) { int n=rng.Next(bag.Count);offers[i]=bag[n];bag.RemoveAt(n); }
-            ClearShots(); banner="The room is quiet. Choose what you remember."; bannerUntil=clock+3;
-        }
-        void TakeReward(int index)
-        {
-            int id=offers[index];
-            if(id==0) damage++;
-            if(id==1) { maxHp+=2;hp=Mathf.Min(maxHp,hp+2); }
-            if(id==2) moveSpeed*=1.12f;
-            if(id==3) attackReach*=1.2f;
-            if(id==4) hp=maxHp;
-            rewardTaken=true;mode=Mode.Playing;banner="Memory kept. Reach the gate and press E.";bannerUntil=clock+4;
-        }
         void SyncVisuals()
         {
+            pulse.enabled=clock<pulseUntil;
+            pulse.transform.localScale=new Vector3(8,8,1);
+            pulse.color=new Color(.51f,.96f,.86f,.15f);
             hero.transform.position=pos;
             hero.color=clock<dashEnd?Hex("FFFFFF") : clock<hurtUntil && ((int)(clock*18)%2==0)?Hex("ED8196"):Hex("83F4DB");
             hero.transform.localScale=new Vector3(clock<dashEnd?1.1f:.7f,clock<dashEnd?.8f:1.3f,1);
@@ -380,15 +382,6 @@ namespace Storyborn
         void OnGUI()
         {
             InitGUI();GUI.matrix=Matrix4x4.TRS(Vector3.zero,Quaternion.identity,new Vector3(Screen.width/1280f,Screen.height/720f,1));
-            if(mode==Mode.Title)
-            {
-                Overlay();Label(80,60,600,30,"STORYBORN / COMBAT PROTOTYPE 0.1",smallStyle);
-                Label(80,128,1000,90,"A story that refuses to fade.",titleStyle);
-                Label(83,235,860,80,"Civilization fell. Its stories survived.\nRead the warning. Choose your position. Write the next line.");
-                Label(83,350,900,95,"A / D  Move       SPACE  Jump       J / Left click  Attack\nSHIFT / K  Dash  ·  Hold a direction for an aerial dash\nTwo quick dashes trigger a 0.5s lock. No parry.");
-                if(Button(83,500,340,62,"ENTER  /  BEGIN A NEW STORY")) mode=Mode.Playing;
-                Label(83,610,900,50,"Placeholder shapes only. Weapons, enemies and upgrades are prototype choices.",smallStyle);return;
-            }
             Fill(new Rect(0,0,1280,96),new Color(.035f,.05f,.08f,.93f));
             Label(28,16,410,25,"STORYBORN  /  "+roomNames[room],smallStyle);
             Fill(new Rect(28,52,240,13),Hex("3B2C3D"));Fill(new Rect(28,52,240*(float)hp/maxHp,13),Hex("83F4DB"));
@@ -398,9 +391,10 @@ namespace Storyborn
             Label(450,49,420,25,"ATK "+damage+"   /   ENEMIES "+foes.Count+"   /   SEED "+seed,smallStyle);
             Label(1000,20,260,50,"ESC  Pause\nAttempt "+(deaths+1),smallStyle);
             Fill(new Rect(0,672,1280,48),new Color(.035f,.05f,.08f,.94f));
-            Label(28,682,1200,30,"A/D  Move     SPACE  Jump     J  Attack     SHIFT/K  Dash     E  Gate     |     Amber = warning  ·  Red = active  ·  Purple = recovery",smallStyle);
+            Label(28,682,1200,30,"WASD  Move / Jump / Drop    RMB  Attack    LMB  Dash    Q  Pulse    E  Ink bolt    |    Walk into cleared gate",smallStyle);
+            Label(28,625,900,30,"Q PULSE  "+(qSkill.Remaining(clock)>0?qSkill.Remaining(clock).ToString("0.0")+"s":"READY")+"     E INK BOLT  "+(eSkill.Remaining(clock)>0?eSkill.Remaining(clock).ToString("0.0")+"s":"READY"),smallStyle);
             if(clock<bannerUntil) Label(250,112,850,60,banner);
-            if(foes.Count==0 && mode==Mode.Playing) Label(450,580,600,50,"ROOM CLEAR  /  Reach the gate and press E");
+            if(foes.Count==0 && mode==Mode.Playing) Label(450,580,600,50,"ROOM CLEAR  /  Walk into the gate");
             foreach(var f in foes)
             {
                 Vector3 v=cam.WorldToViewportPoint(f.p+Vector2.up*(f.type==2?1.5f:1.1f));
@@ -408,18 +402,6 @@ namespace Storyborn
                 float x=v.x*1280-35,y=(1-v.y)*720;
                 Fill(new Rect(x,y,70,5),Hex("382B3F"));Fill(new Rect(x,y,70*(float)f.hp/f.max,5),Hex("E5B4E6"));
                 if(f.type==2) Label(x-35,y-28,220,30,"THE LAST WITNESS",smallStyle);
-            }
-            if(mode==Mode.Reward)
-            {
-                Overlay();Label(80,100,1100,70,"Choose a memory.",titleStyle);
-                Label(83,190,1000,60,"One fragment survives with you, until this run ends.");
-                for(int i=0;i<3;i++)
-                {
-                    float x=83+i*375; Fill(new Rect(x,290,345,240),Hex("202C3B"));
-                    Label(x+24,320,300,30,"0"+(i+1)+"  /  "+rewardNames[offers[i]],smallStyle);
-                    Label(x+24,375,290,65,rewardText[offers[i]]);
-                    if(Button(x+24,460,297,45,"KEEP  ["+(i+1)+"]")) TakeReward(i);
-                }
             }
             if(mode==Mode.Paused)
             {

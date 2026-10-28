@@ -4,14 +4,23 @@ using UnityEngine;
 
 namespace Storyborn.Editor
 {
-    // No prefab setup: the runtime entry point constructs the prototype.
+    // The sample scene explicitly owns the game; unrelated scenes stay untouched.
     public static class PrototypeSetup
     {
         [MenuItem("Storyborn/Open Prototype")]
         public static void Open()
         {
+            if (EditorApplication.isPlaying) return;
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             EditorSceneManager.OpenScene("Assets/Scenes/Prototype.unity");
+        }
+        [MenuItem("Storyborn/Play Prototype")]
+        public static void Play()
+        {
+            if(EditorApplication.isPlaying) return;
+            if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            EditorSceneManager.OpenScene("Assets/Scenes/Prototype.unity");
+            EditorApplication.isPlaying=true;
         }
         [MenuItem("Storyborn/Run Combat Rule Checks")]
         public static void CheckRules()

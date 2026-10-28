@@ -21,6 +21,16 @@ namespace Storyborn
         public void Reset() { Count = 0; LockedUntil = 0; last = -100f; }
         public float Remaining(float now) { return Math.Max(0, LockedUntil - now); }
     }
+    public sealed class SkillCooldown
+    {
+        readonly float duration;
+        float readyAt;
+        public SkillCooldown(float duration) { this.duration=duration; }
+        public bool TryUse(float now)
+        { if(now<readyAt) return false; readyAt=now+duration; return true; }
+        public float Remaining(float now) { return Math.Max(0,readyAt-now); }
+        public void Reset() { readyAt=0; }
+    }
     public static class CombatRules
     {
         public static bool Overlap(float ax, float ay, float aw, float ah,

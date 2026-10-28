@@ -25,6 +25,12 @@ class Program
   Check(CombatRules.Overlap(0,0,1,1,.9f,0,1,1),"bodies overlap");
   Check(!CombatRules.Overlap(0,0,1,1,2,0,1,1),"separate bodies do not overlap");
   Check(!CombatRules.Overlap(0,0,1,1,0,2,1,1),"vertical separation respected");
+  var skill=new SkillCooldown(4);
+  Check(skill.TryUse(0),"skill initially ready");
+  Check(!skill.TryUse(.1f),"skill rejects repeated input");
+  Check(Math.Abs(skill.Remaining(1)-3)<.001f,"skill cooldown displayed accurately");
+  Check(!skill.TryUse(3.99f) && skill.TryUse(4),"skill returns exactly at cooldown boundary");
+  skill.Reset();Check(skill.TryUse(0),"new room or run resets skill cooldown");
   Console.WriteLine(count+" checks passed.");
  }
 }
