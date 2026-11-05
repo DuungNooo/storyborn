@@ -1,28 +1,18 @@
-# STORYBORN v0.2.2
+# STORYBORN v0.3 — 동화의 숲
 
-**기존 Unity 프로젝트에 가져와 실행하는 전투 프로토타입**입니다. 이미지는 임시 도형을 사용합니다.
+**[기존 Unity 프로젝트용 Assets ZIP 다운로드](https://github.com/DuungNooo/storyborn/raw/refs/heads/main/Downloads/Storyborn_v0.3_Assets.zip)**
 
-## 다운로드 및 실행
+Unity 종료 → ZIP 해제 → `Assets` 내용물을 기존 프로젝트의 `Assets` 안에 복사·덮어쓰기 → Unity 열기 → **Storyborn → Play Prototype** → Game 뷰 클릭.
 
-**[Assets 직접 복사용 ZIP 다운로드](https://github.com/DuungNooo/storyborn/raw/refs/heads/main/Downloads/Storyborn_v0.2.2_Assets.zip)**
+최초 연구소 연습 → 시작 거점 → 숲 전투와 보상 경로 → 정예 → 정비 → 야수 보스까지 연결한 통합 프로토타입입니다.
 
-Unity 종료 → ZIP 압축 해제 → 안의 `Assets` 내용을 기존 프로젝트의 `Assets` 안에 복사(기존 Storyborn 파일 덮어쓰기) → Unity 열기 → **Storyborn → Play Prototype** → Game 뷰 클릭.
+- 좌클릭 공격 / 우클릭 대시 / WASD 이동·점프·하강.
+- Q/E 레인보우 장비: 획득 시 직선·화살비·곡사 중 한 스킬 고정.
+- 현장 교체·파괴, 남긴 장비 자동 파괴, 파편 강화와 추가 화살.
+- 골드·파편·영구 재화 3종. 회귀 시 임시 진행 초기화, 영구 구매·업적 저장.
+- F 상호작용, B 강화·영구 성장, Esc 일시정지, 사망 후 R 재시작.
+- 수정 가능한 주인공 PNG와 임시 숲·적 픽셀 스프라이트.
 
-`Assets/Assets`가 되지 않도록 폴더 내용을 합칩니다. 이 방법은 Unity 패키지 가져오기 창을 사용하지 않습니다.
+[한국어 실행·조작·설계 안내](README_KO.md) · [검증과 한계](VALIDATION_KO.md)
 
-v0.2 패키지를 가져오다가 `PackageImportTreeView.RecursiveComputeEnabledStateForFolders` 오류가 난 경우 Import 창을 먼저 닫고 위 ZIP 방식을 사용해 주세요. v0.2.2에서는 좌클릭 공격 / 우클릭 대시로 변경했습니다.
-
-[한국어 상세 안내](README_KO.md) · [검증 기록](VALIDATION_KO.md)
-
-## 조작
-
-- **좌클릭 공격 / 우클릭 무적 대시**
-- **A/D 좌우 이동 / W 점프 / S 발판 하강**
-- **Q 주변 충격파 / E 전방 투사체** — 시험용 스킬
-- Esc 일시정지, R 재시작
-
-**증강·강화 선택은 없습니다.** 적을 정리한 뒤 출구로 걸어가면 다음 구간으로 이동합니다.
-
-기준 버전은 Unity 2022.3 LTS입니다. 기존 Input Manager와 새 Input System을 위한 입력 처리를 포함합니다. 런타임 코드 API 참조 컴파일과 규칙 검사 23개는 통과했지만, Unity 에디터 가져오기·실제 플레이·Windows 빌드는 미검증입니다.
-
-이 파일은 Unity 프로젝트용 패키지이며 설치된 게임의 EXE 옆에 넣는 모드는 아닙니다. Windows EXE는 Unity에서 **Storyborn → Build Windows x64**로 생성할 수 있습니다.
+Unity 2022.3 LTS 기준. 런타임 API 참조 컴파일 및 핵심 규칙 검사는 수행했으나 실제 Unity 플레이·가져오기·Windows 빌드는 미검증입니다. 미니보스·앨리스·오즈·궁극기·후속 지역·본편 스토리는 이후 범위입니다.

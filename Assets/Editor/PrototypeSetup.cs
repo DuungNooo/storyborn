@@ -1,25 +1,33 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEditor.Build.Reporting;
 
 namespace Storyborn.Editor
 {
     // The sample scene explicitly owns the game; unrelated scenes stay untouched.
     public static class PrototypeSetup
     {
+        static string ScenePath()
+        {
+            string path=AssetDatabase.GUIDToAssetPath("745aca52048657f8809acaabe7b374e7");
+            if(string.IsNullOrEmpty(path))
+                throw new System.IO.FileNotFoundException("Storyborn sample scene is missing. Copy the complete Assets folder from the download.");
+            return path;
+        }
         [MenuItem("Storyborn/Open Prototype")]
         public static void Open()
         {
             if (EditorApplication.isPlaying) return;
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            EditorSceneManager.OpenScene("Assets/Scenes/Prototype.unity");
+            EditorSceneManager.OpenScene(ScenePath());
         }
         [MenuItem("Storyborn/Play Prototype")]
         public static void Play()
         {
             if(EditorApplication.isPlaying) return;
             if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            EditorSceneManager.OpenScene("Assets/Scenes/Prototype.unity");
+            EditorSceneManager.OpenScene(ScenePath());
             EditorApplication.isPlaying=true;
         }
         [MenuItem("Storyborn/Run Combat Rule Checks")]
@@ -44,9 +52,18 @@ namespace Storyborn.Editor
         [MenuItem("Storyborn/Build Windows x64")]
         public static void BuildWindows()
         {
+            if(EditorApplication.isPlaying) return;
+            if(!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone,BuildTarget.StandaloneWindows64))
+            {
+                EditorUtility.DisplayDialog("Windows Build Support missing","Install Windows Build Support for this editor through Unity Hub, then try again.","OK");
+                return;
+            }
             string folder = EditorUtility.OpenFolderPanel("Build destination", "", "");
             if(string.IsNullOrEmpty(folder)) return;
-            BuildPipeline.BuildPlayer(new[]{"Assets/Scenes/Prototype.unity"},folder+"/Storyborn.exe",BuildTarget.StandaloneWindows64,BuildOptions.None);
+            BuildReport report=BuildPipeline.BuildPlayer(new[]{ScenePath()},folder+"/Storyborn.exe",BuildTarget.StandaloneWindows64,BuildOptions.None);
+            if(report.summary.result!=BuildResult.Succeeded)
+                throw new System.Exception("Storyborn build failed. See the Unity Console for details.");
+            EditorUtility.RevealInFinder(folder+"/Storyborn.exe");
         }
     }
 }

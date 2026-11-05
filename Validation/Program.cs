@@ -31,6 +31,59 @@ class Program
   Check(Math.Abs(skill.Remaining(1)-3)<.001f,"skill cooldown displayed accurately");
   Check(!skill.TryUse(3.99f) && skill.TryUse(4),"skill returns exactly at cooldown boundary");
   skill.Reset();Check(skill.TryUse(0),"new room or run resets skill cooldown");
+  ProgressChecks();
   Console.WriteLine(count+" checks passed.");
+ }
+ static void ProgressChecks()
+ {
+  var meta=new MetaState{memory=40,tutorialDone=true};
+  var run=new RunProgress(meta,42);
+  var first=new Gear(0,101);run.Offer(first);run.Equip(0);
+  Check(object.ReferenceEquals(run.Slots[0],first) && run.Pending==null,"equip into empty slot consumes pickup");
+  var second=new Gear(1,102);run.Offer(second);var displaced=run.Equip(0);
+  Check(object.ReferenceEquals(displaced,first) && object.ReferenceEquals(run.Pending,first) && object.ReferenceEquals(run.Slots[0],second),"swap leaves displaced item on ground");
+  run.Equip(1);
+  Check(object.ReferenceEquals(run.Slots[1],first) && run.Pending==null,"displaced item can enter other slot without duplication");
+  Check(run.ScrapPending()==0 && run.Shards==0,"empty pickup gives no shards");
+  Check(!run.Upgrade(0) && second.Level==0 && run.Shards==0,"unaffordable gear upgrade changes nothing");
+  run.Offer(new Gear(2,103));Check(run.LeaveRoom()==3 && run.Shards==3 && run.Pending==null,"unclaimed ground gear automatically converts to shards at exit");
+  Check(run.LeaveRoom()==0 && run.Shards==3,"room exit cannot scrap same item twice");
+  Check(run.Upgrade(0) && second.Level==1 && second.Damage==3 && second.ProjectileCount==2 && run.Shards==0,"upgrade spends exact cost and improves same rolled skill");
+  Check(second.Variant==1 && meta.firstUpgrade && run.MaxHealth==9,"first upgrade records permanent achievement without rerolling skill");
+  run.Offer(new Gear(0,104));run.Offer(new Gear(1,105));
+  Check(run.Shards==3 && run.Pending.Id==105,"new offer resolves old unclaimed pickup without loss");
+  int before=run.Shards;run.Offer(run.Pending);
+  Check(run.Shards==before,"reoffering same pending item cannot duplicate shards");
+  bool threw=false;try{run.Offer(run.Slots[0]);}catch(InvalidOperationException){threw=true;}
+  Check(threw && object.ReferenceEquals(run.Slots[0],second),"equipped item cannot also be offered on ground");
+  Check(run.BuyHealth() && meta.memory==35 && meta.hpUpgrades==1 && run.MaxHealth==11,"permanent health purchase spends persistent currency");
+  Check(run.BuyAttack() && meta.memory==27 && meta.attackUpgrades==1 && run.AttackDamage==2,"permanent attack purchase spends persistent currency");
+  run.AwardKill(false);run.AwardKill(true);run.CompleteRoom();
+  Check(run.Gold==15 && meta.memory==29,"enemy and room rewards distinguish gold and memory");
+  Check(!run.TrySpendGold(16) && !run.TrySpendGold(-1) && run.Gold==15,"gold overspend and negative purchase rejected");
+  Check(run.TrySpendGold(5) && run.Gold==10,"gold spending is atomic");
+  run.AwardBoss();int atk=run.AttackDamage;run.AwardBoss();
+  Check(meta.beastDefeated && atk==3 && run.AttackDamage==3,"boss achievement bonus only applies once");
+  int memory=meta.memory;run.ResetRun();
+  Check(run.Gold==0 && run.Shards==0 && run.Pending==null && run.Slots[0]==null && run.Slots[1]==null,"rewind clears all run currencies and all gear");
+  Check(meta.memory==memory && meta.tutorialDone && meta.firstUpgrade && meta.beastDefeated && run.MaxHealth==11 && run.AttackDamage==3,"rewind retains memories tutorial purchases and achievements");
+  Check(!run.Upgrade(-1) && !run.Upgrade(2) && run.UpgradeCost(0)==-1,"invalid or empty gear slot rejected");
+  var poor=new RunProgress(new MetaState(),1);
+  Check(!poor.BuyHealth() && !poor.BuyAttack() && poor.Memory==0,"insufficient permanent currency does not mutate upgrades");
+  var capped=new RunProgress(new MetaState{memory=999,hpUpgrades=5,attackUpgrades=5},2);
+  Check(!capped.BuyHealth() && !capped.BuyAttack() && capped.Memory==999,"permanent upgrades cap without consuming currency");
+  poor.Offer(new Gear(2,201){Level=3});poor.Equip(0);
+  Check(poor.UpgradeCost(0)==-1 && !poor.Upgrade(0),"maximum gear level cannot upgrade");
+  var a=new RunProgress(new MetaState(),314);var b=new RunProgress(new MetaState(),314);
+  bool stable=true;for(int i=0;i<30;i++){var ga=a.NewGear();var gb=b.NewGear();stable&=ga.Variant==gb.Variant && ga.Id==gb.Id && ga.Variant>=0 && ga.Variant<=2;}
+  Check(stable,"seed reproduces gear rolls while all variants stay valid");
+  var dismantle=new RunProgress(new MetaState(),73);
+  Check(dismantle.ScrapSlot(0)==0 && dismantle.ScrapSlot(-1)==0 && dismantle.ScrapSlot(2)==0 && dismantle.Shards==0,"empty and invalid equipped-slot scraps give no reward");
+  var upgraded=new Gear(1,301){Level=2};dismantle.Offer(upgraded);dismantle.Equip(1);
+  var untouched=new Gear(0,302);dismantle.Offer(untouched);
+  Check(dismantle.ScrapSlot(1)==7 && dismantle.Shards==7 && dismantle.Slots[1]==null && object.ReferenceEquals(dismantle.Pending,untouched),"equipped scrap pays level value and preserves separate ground item");
+  Check(dismantle.ScrapSlot(1)==0 && dismantle.Shards==7,"equipped item cannot be scrapped twice");
+  var corrupted=new RunProgress(new MetaState{memory=-8,deaths=-1,hpUpgrades=500,attackUpgrades=-5},0);
+  Check(corrupted.Memory==0 && corrupted.Meta.deaths==0 && corrupted.Meta.hpUpgrades==5 && corrupted.Meta.attackUpgrades==0,"save normalization bounds invalid values");
  }
 }

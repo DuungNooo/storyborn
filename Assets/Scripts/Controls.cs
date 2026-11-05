@@ -28,6 +28,8 @@ namespace Storyborn
                 case KeyCode.A:mapped=Key.A;break; case KeyCode.D:mapped=Key.D;break;
                 case KeyCode.W:mapped=Key.W;break; case KeyCode.S:mapped=Key.S;break;
                 case KeyCode.Q:mapped=Key.Q;break; case KeyCode.E:mapped=Key.E;break;
+                case KeyCode.F:mapped=Key.F;break; case KeyCode.B:mapped=Key.B;break;
+                case KeyCode.Alpha1:mapped=Key.Digit1;break;case KeyCode.Alpha2:mapped=Key.Digit2;break;
                 case KeyCode.R:mapped=Key.R;break; case KeyCode.Space:mapped=Key.Space;break;
                 case KeyCode.Escape:mapped=Key.Escape;break;case KeyCode.Return:mapped=Key.Enter;break;
                 case KeyCode.LeftArrow:mapped=Key.LeftArrow;break; case KeyCode.RightArrow:mapped=Key.RightArrow;break;

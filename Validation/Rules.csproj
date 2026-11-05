@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
- <ItemGroup><Compile Include="Program.cs"/><Compile Include="../Assets/Scripts/CombatRules.cs"/></ItemGroup>
+ <ItemGroup><Compile Include="Program.cs"/><Compile Include="../Assets/Scripts/CombatRules.cs"/><Compile Include="../Assets/Scripts/RunProgress.cs"/></ItemGroup>
 </Project>
