@@ -32,6 +32,7 @@ class Program
   Check(!skill.TryUse(3.99f) && skill.TryUse(4),"skill returns exactly at cooldown boundary");
   skill.Reset();Check(skill.TryUse(0),"new room or run resets skill cooldown");
   ProgressChecks();
+  FeelChecks();
   Console.WriteLine(count+" checks passed.");
  }
  static void ProgressChecks()
@@ -86,4 +87,23 @@ class Program
   var corrupted=new RunProgress(new MetaState{memory=-8,deaths=-1,hpUpgrades=500,attackUpgrades=-5},0);
   Check(corrupted.Memory==0 && corrupted.Meta.deaths==0 && corrupted.Meta.hpUpgrades==5 && corrupted.Meta.attackUpgrades==0,"save normalization bounds invalid values");
  }
+ static void FeelChecks()
+ {
+  var combo=new ComboChain();
+  Check(combo.TryAttack(0,.2f) && combo.Step==0 && combo.Damage(2)==2,"combo begins with normal first hit");
+  Check(!combo.TryAttack(.1f,.2f) && combo.Step==0,"early repeated input cannot advance combo");
+  Check(combo.TryAttack(.2f,.2f) && combo.Step==1 && combo.Damage(2)==2,"second hit follows recovery");
+  Check(combo.TryAttack(.4f,.2f) && combo.Step==2 && combo.Damage(2)==3,"third hit gains finisher damage");
+  Check(!combo.TryAttack(.65f,.2f) && combo.TryAttack(.68f,.2f) && combo.Step==0,"finisher has longer recovery then wraps combo");
+  Check(combo.TryAttack(1.5f,.2f) && combo.Step==0,"idle interval resets combo to opener");
+  combo.Reset();Check(combo.TryAttack(0,.2f) && combo.Step==0,"new room clears combo history and recovery");
+  var buffer=new InputBuffer(.12f);
+  Check(!buffer.Pending(0) && !buffer.Consume(0),"unpressed buffer cannot fire");
+  buffer.Press(1);Check(buffer.Pending(1.1f) && buffer.Consume(1.1f) && !buffer.Consume(1.1f),"buffer fires at most once");
+  buffer.Press(2);Check(!buffer.Consume(2.13f),"expired press cannot trigger late action");
+  buffer.Press(3);Check(buffer.Pending(3) && buffer.Pending(3) && buffer.Consume(3),"frozen simulation preserves input across hit-stop");
+  buffer.Press(4);buffer.Clear();Check(!buffer.Pending(4),"room transition clears queued input");
+  buffer.Press(5);buffer.Press(5.1f);Check(buffer.Consume(5.2f) && !buffer.Consume(5.2f),"held input refreshes expiry without accumulating attacks");
+ }
+
 }

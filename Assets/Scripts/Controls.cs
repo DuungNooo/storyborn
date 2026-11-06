@@ -16,6 +16,15 @@ namespace Storyborn
             return Input.GetMouseButtonDown(button);
 #endif
         }
+        public static bool MouseHeld(int button)
+        {
+#if ENABLE_INPUT_SYSTEM
+            if(Mouse.current==null) return false;
+            return button==0?Mouse.current.leftButton.isPressed:Mouse.current.rightButton.isPressed;
+#else
+            return Input.GetMouseButton(button);
+#endif
+        }
         public static bool Down(KeyCode key) { return Read(key,true); }
         public static bool Held(KeyCode key) { return Read(key,false); }
         static bool Read(KeyCode key,bool pressed)
